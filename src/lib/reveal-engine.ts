@@ -49,35 +49,68 @@ Respond in this exact JSON format:
 
 connected_indices are the 1-based indices of the connected pins.`;
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    // Fallback: simple local reveal when no API key
+  // Try providers in order: Groq (free+fast) → Anthropic → local fallback
+  const groqKey = process.env.GROQ_API_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+
+  if (!groqKey && !anthropicKey) {
     return localReveal(pins);
   }
 
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-3-5-sonnet-20241022",
-        max_tokens: 300,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
+    let text = "";
 
-    if (!response.ok) {
-      const errBody = await response.text();
-      console.error("Anthropic API error:", response.status, errBody);
-      return localReveal(pins);
+    if (groqKey) {
+      // Groq: free, fast, llama-based
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${groqKey}`,
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          max_tokens: 300,
+          temperature: 0.7,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        text = data.choices?.[0]?.message?.content || "";
+      } else {
+        const err = await res.text();
+        console.error("Groq API error:", res.status, err);
+      }
     }
 
-    const data = await response.json();
-    const text = data.content?.[0]?.text || "";
+    // Fallback to Anthropic if Groq failed
+    if (!text && anthropicKey) {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": anthropicKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-3-haiku-20240307",
+          max_tokens: 300,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        text = data.content?.[0]?.text || "";
+      } else {
+        const err = await res.text();
+        console.error("Anthropic API error:", res.status, err);
+      }
+    }
+
+    if (!text) return localReveal(pins);
 
     // Extract JSON from response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
