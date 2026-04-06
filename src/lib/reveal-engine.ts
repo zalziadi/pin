@@ -64,14 +64,15 @@ connected_indices are the 1-based indices of the connected pins.`;
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-3-5-sonnet-20241022",
         max_tokens: 300,
         messages: [{ role: "user", content: prompt }],
       }),
     });
 
     if (!response.ok) {
-      console.error("Anthropic API error:", response.status);
+      const errBody = await response.text();
+      console.error("Anthropic API error:", response.status, errBody);
       return localReveal(pins);
     }
 
