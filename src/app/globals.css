@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+:root {
+  --background: #08090c;
+  --foreground: #ededed;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Hide scrollbar but keep scroll */
+::-webkit-scrollbar { width: 0; height: 0; }
+
+/* Smooth focus */
+textarea:focus, button:focus { outline: none; }
+
+/* Selection */
+::selection {
+  background: rgba(168, 162, 255, 0.2);
+  color: white;
+}
